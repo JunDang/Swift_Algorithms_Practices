@@ -19,7 +19,6 @@ extension Vertex: CustomStringConvertible {
         return "\(index): \(data)"
     }
 }
-    
 
 //An Edge connects two vertices and has an optional weight
 public struct Edge<T> {
@@ -30,6 +29,7 @@ public struct Edge<T> {
 // Graph protocol
 public protocol Graph {
     associatedtype Element
+    var allVertices: [Vertex<Element>] { get }
     
     func createVertex(data: Element) -> Vertex<Element>
     func addDirectedEdge(from source: Vertex<Element>,
@@ -115,6 +115,9 @@ public class AdjacencyList<T: Hashable>: Graph {
             .first{$0.destination == destination}?
             .weight
     }
+    public var allVertices: [Vertex<T>] {
+        return Array(adjacencies.keys)
+    }
     
 }
 
@@ -135,6 +138,7 @@ extension AdjacencyList: CustomStringConvertible {
         return result
     }
 }
+
 
 let graph = AdjacencyList<String>()
 let singapore = graph.createVertex(data: "Singapore")
@@ -211,8 +215,6 @@ public struct Queue<T> {
     }
 }
 
-
-
 // Breadth First Search
 extension Graph where Element: Hashable {
     func breadFirstSearch(from source: Vertex<Element>) -> /*[Vertex<Element>]*/ Int {
@@ -242,6 +244,144 @@ extension Graph where Element: Hashable {
         //return visited
         return maxItemOnQueue
     }
+    // recursive bfs
+    func bfs2(from source: Vertex<Element>) -> [Vertex<Element>] {
+        var queue = Queue<Vertex<Element>>()
+        var enqueued: Set<Vertex<Element>> = []
+        var visited: [Vertex<Element>] = []
+        
+        queue.enqueue(source)
+        enqueued.insert(source)
+        
+        bfsRecursive(queue: &queue, enqueued: &enqueued, visited: &visited)
+        return visited
+    }
+    func bfsRecursive(queue: inout Queue<Vertex<Element>>, enqueued: inout Set<Vertex<Element>>, visited: inout [Vertex<Element>]) {
+        guard let vertex = queue.dequeue() else {return}
+            visited.append(vertex)
+            let neighbourEdges = edges(from: vertex)
+        neighbourEdges.forEach { (edge) in
+            if !enqueued.contains(edge.destination) {
+                queue.enqueue(edge.destination)
+                enqueued.insert(edge.destination)
+            }
+        }
+        bfsRecursive(queue: &queue, enqueued: &enqueued, visited: &visited)
+    }
+}
+// Stack
+public struct Stack<T> {
+    
+    fileprivate var arr = [T]()
+    
+    public var isEmpty: Bool {
+      return arr.isEmpty
+    }
+    
+    public var count: Int {
+        return arr.count
+    }
+    public var peek: T? {
+        return arr.last
+    }
+    
+    public mutating func push(_ element: T) {
+        arr.append(element)
+    }
+    
+    public mutating func pop() -> T? {
+        return isEmpty ? nil : arr.removeLast()
+    }
+}
+// Depth First Search
+extension Graph where Element: Hashable {
+    func depthFirstSearch(from source: Vertex<Element>) -> [Vertex<Element>] {
+        var stack = Stack<Vertex<Element>>()
+        var pushed: Set<Vertex<Element>> = []
+        var visited: [Vertex<Element>] = []
+        
+        stack.push(source)
+        pushed.insert(source)
+        visited.append(source)
+        
+        outer: while let vertex = stack.peek {
+            let neighbours = edges(from: vertex)
+            guard !neighbours.isEmpty else {
+                stack.pop()
+                continue
+            }
+            
+            for edge in neighbours {
+                if !pushed.contains(edge.destination) {
+                    stack.push(edge.destination)
+                    pushed.insert(edge.destination)
+                    visited.append(edge.destination)
+                    continue outer
+                }
+            }
+            stack.pop()
+        }
+        return visited
+    }
+    // Depth First Search Recursive implementation
+    
+    // correct depth first search
+    func depthFS(_ source: Vertex<Element>) -> [Vertex<Element>] {
+       // var stack = Stack<Vertex<Element>>()
+        var pushed: Set<Vertex<Element>> = []
+        var visited: [Vertex<Element>] = []
+        dfsResursive2(source, pushed: &pushed, visited: &visited)
+        return visited
+    }
+    
+    func dfsResursive2(_ source: Vertex<Element>, pushed: inout Set<Vertex<Element>>, visited: inout [Vertex<Element>]) {
+        pushed.insert(source)
+        visited.append(source)
+        let neighbours = edges(from: source)
+        for edge in neighbours {
+            if !pushed.contains(edge.destination) {
+                dfsResursive2(edge.destination, pushed: &pushed, visited: &visited)
+            }
+        }
+    }
+}
+  // detect if there is a cycle when there is a path of edges and vertices leading back to the same source
+extension Graph where Element: Hashable {
+    func hasCycle(from source: Vertex<Element>) -> Bool {
+        var pushed: Set<Vertex<Element>> = []
+        hasCycle(from: source, pushed: &pushed)
+        return true
+    }
+    
+    func hasCycle(from source: Vertex<Element>, pushed: inout Set<Vertex<Element>>) -> Bool {
+        pushed.insert(source)
+        let neighbours = edges(from: source)
+        for edge in neighbours {
+            if !pushed.contains(edge.destination) && hasCycle(from: edge.destination, pushed: &pushed) {
+                return true
+            } else if pushed.contains(edge.destination) {
+                return true
+            }
+        }
+        pushed.remove(source)
+        return false
+    }
+}
+
+// check if a graph is disconnected. A graph is said to be disconnected if no path exists between two nodes.
+extension Graph where Element: Hashable {
+    func isDisconnected() -> Bool {
+        guard let firstVertex = allVertices.first else {
+            return false // if there is no vertex in graph, treat it as connected
+        }
+        let visited = bfs2(from: firstVertex)
+        for vertex in allVertices {
+            if !visited.contains(vertex) {
+                return true
+            }
+        }
+        return false
+    }
 }
 
 let bfs = AdjacencyList<String>()
@@ -266,7 +406,16 @@ bfs.add(.undirected, from: i1, to: f1, weight: nil)
 bfs.add(.undirected, from: f1, to: g1, weight: nil)
 bfs.add(.undirected, from: f1, to: e1, weight: nil)
 bfs.add(.undirected, from: e1, to: h1, weight: nil)
-bfs.breadFirstSearch(from: a1)
+//bfs.breadFirstSearch(from: a1)
+//print(bfs.bfs2(from: a1))
+//let vertices = graph.depthFirstSearch(from: singapore)
+let vertices = graph.depthFS(singapore)
+vertices.forEach { (vertex) in
+    print(vertex)
+}
+
+
+
 
 
 
