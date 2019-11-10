@@ -75,6 +75,26 @@ struct Heap<Element: Equatable> {
             parent = candidate
         }
     }
+    mutating func siftDown2(from index: Int, upTo size: Int) {
+        var parent = index
+        while true {
+            let left = leftChildIndex(ofParentAt: parent)
+            let right = rightChildIndex(ofParentAt: parent)
+            var candidate = parent
+            if left < size && sort(elements[left], elements[candidate]) {
+                candidate = left
+            }
+            if right < size && sort(elements[right], elements[candidate]) {
+                candidate = right
+            }
+            if candidate == parent {
+                return
+            }
+            elements.swapAt(parent, candidate)
+            parent = candidate
+        }
+    }
+    
     
     mutating func insert(_ element: Element) {
         elements.append(element)
@@ -157,6 +177,17 @@ func getNthSmallestElement(n: Int, elements: [Int]) -> Int? {
         current += 1
     }
     return nil
+}
+//HeapSort
+extension Heap {
+    func sorted() -> [Element] {
+        var heap = Heap(sort: sort, elements: elements)
+        for index in heap.elements.indices.reversed() {
+            heap.elements.swapAt(0, index)
+            heap.siftDown2(from: 0, upTo: index)
+        }
+        return heap.elements
+    }
 }
 
 // Priority Queue
